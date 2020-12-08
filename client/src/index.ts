@@ -21,10 +21,14 @@ class Interactable {
 
 class Ball extends Interactable {
   cue: boolean;
+  speed: number;
+  direction: number[];
 
   constructor(x: number, y: number, size: number, cue: boolean) {
     super(x, y ,size, size);
     this.cue = cue;
+    this.speed = 0;
+    this.direction = [0, 0];
   }
 
   move = (x: number, y: number) => {
@@ -63,6 +67,7 @@ canvas.height = Math.floor((size / 2) * scale);
 
 ctx.scale(scale, scale);
 
+const tableFriction = 0.1;
 const pocketSize = 52;
 const pocketSizeOffset = pocketSize * 1.05;
 const railThickness = 26;
@@ -98,13 +103,12 @@ const drawRail = (x: number, y: number, length: number, rotation: number, ctx: C
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-
-
 const ballStartLocations = [[300, 300]];
 
 const balls = Array.from(ballStartLocations, ball => new Ball(ball[0], ball[1], 50, true));
 
-let moving: Ball | null = null;
+let playerMoving: Ball | null = null;
+const moving: Ball[] = [];
 
 canvas.addEventListener("mousedown", event => {
   const rect = canvas.getBoundingClientRect();
@@ -112,12 +116,12 @@ canvas.addEventListener("mousedown", event => {
   const mouseX = (event.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
   const mouseY = (event.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
 
-  if (moving) {
-    moving = null;
+  if (playerMoving) {
+    playerMoving = null;
   } else {
     for(let i = 0; i <= balls.length - 1; i++) {
       if (balls[i].clicked(mouseX, mouseY)) {
-        moving = balls[i];
+        playerMoving = balls[i];
       }
     }
   }
@@ -129,14 +133,13 @@ canvas.addEventListener("mousemove", event => {
   const mouseX = (event.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
   const mouseY = (event.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
 
-  // console.log('cmon', moving)
-
-  if (moving) {
-    moving.move(mouseX, mouseY);
-
-    console.log('changing', balls[0]);
+  if (playerMoving) {
+    playerMoving.move(mouseX, mouseY);
   }
+});
 
+canvas.addEventListener("mouseup", () => {
+  playerMoving = null;
 });
 
 const background = () => {
