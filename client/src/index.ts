@@ -5,6 +5,8 @@ import './style.scss';
 
 // const server = io();
 
+const tableFriction = 0.95;
+
 class Interactable {
   width: number;
   height: number;
@@ -21,14 +23,42 @@ class Interactable {
 
 class Ball extends Interactable {
   cue: boolean;
-  speed: number;
-  direction: number[];
+  acceleration: {x: number, y: number};
+  velocity: {x: number, y: number};
 
   constructor(x: number, y: number, size: number, cue: boolean) {
     super(x, y ,size, size);
     this.cue = cue;
-    this.speed = 0;
-    this.direction = [0, 0];
+    this.acceleration = {x: 0, y: 0};
+    this.velocity = {x: 0, y: 0};
+  }
+
+  updatePosition = () => {
+    this.updateVelocity();
+
+    this.x = this.x + this.velocity.x;
+    this.y = this.y + this.velocity.y;
+  }
+
+  updateVelocity = () => {
+    this.decellerate();
+
+    this.velocity.x = ((this.velocity.x + this.acceleration.x) * tableFriction);
+    this.velocity.y = ((this.velocity.y + this.acceleration.y) * tableFriction);
+
+    // console.log('velo', this.velocity)
+  }
+
+  decellerate = () => {
+    this.acceleration.x *= tableFriction;
+    this.acceleration.y *= tableFriction;
+  }
+
+  updateAcceleration = (x: number, y: number) => {
+    this.acceleration.x = x;
+    this.acceleration.y = y;
+
+    // console.log('accel', this.acceleration);
   }
 
   move = (x: number, y: number) => {
@@ -67,7 +97,6 @@ canvas.height = Math.floor((size / 2) * scale);
 
 ctx.scale(scale, scale);
 
-const tableFriction = 0.1;
 const pocketSize = 52;
 const pocketSizeOffset = pocketSize * 1.05;
 const railThickness = 26;
@@ -78,8 +107,6 @@ const vRailLength = canvas.height - (pocketSizeOffset * 4);
 const pocketLocations = [[pocketSize, pocketSize], [canvas.width / 2, pocketSize], [canvas.width - pocketSize, pocketSize], [pocketSize, canvas.height - pocketSize], [canvas.width / 2, canvas.height - pocketSize], [canvas.width - pocketSize, canvas.height - pocketSize]];
 
 const pockets = Array.from(pocketLocations, p => new Pocket(p[0], p[1], pocketSize));
-
-
 
 const drawRail = (x: number, y: number, length: number, rotation: number, ctx: CanvasRenderingContext2D) => {
   const points = [[railThickness, railThickness], [length - railThickness, railThickness], [length, 0]];
@@ -108,7 +135,6 @@ const ballStartLocations = [[300, 300]];
 const balls = Array.from(ballStartLocations, ball => new Ball(ball[0], ball[1], 50, true));
 
 let playerMoving: Ball | null = null;
-const moving: Ball[] = [];
 
 canvas.addEventListener("mousedown", event => {
   const rect = canvas.getBoundingClientRect();
@@ -116,31 +142,52 @@ canvas.addEventListener("mousedown", event => {
   const mouseX = (event.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
   const mouseY = (event.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
 
-  if (playerMoving) {
-    playerMoving = null;
-  } else {
-    for(let i = 0; i <= balls.length - 1; i++) {
-      if (balls[i].clicked(mouseX, mouseY)) {
-        playerMoving = balls[i];
-      }
+  
+  for(let i = 0; i <= balls.length - 1; i++) {
+    if (balls[i].cue) {
+      const direction = [balls[i].x - mouseX, balls[i].y - mouseY];
+
+      const dirMagnitude = Math.sqrt(Math.pow(direction[0], 2) + Math.pow(direction[1], 2));
+      const dirNormalized = [direction[0] / dirMagnitude, direction[1] / dirMagnitude];
+
+      console.log(direction, dirMagnitude, dirNormalized);
+
+      balls[i].updateAcceleration(dirNormalized[0] * 3, dirNormalized[1] * 3);
     }
   }
 });
 
-canvas.addEventListener("mousemove", event => {
-  const rect = canvas.getBoundingClientRect();
+// canvas.addEventListener("mousedown", event => {
+//   const rect = canvas.getBoundingClientRect();
 
-  const mouseX = (event.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
-  const mouseY = (event.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
+//   const mouseX = (event.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
+//   const mouseY = (event.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
 
-  if (playerMoving) {
-    playerMoving.move(mouseX, mouseY);
-  }
-});
+//   if (playerMoving) {
+//     playerMoving = null;
+//   } else {
+//     for(let i = 0; i <= balls.length - 1; i++) {
+//       if (balls[i].clicked(mouseX, mouseY)) {
+//         playerMoving = balls[i];
+//       }
+//     }
+//   }
+// });
 
-canvas.addEventListener("mouseup", () => {
-  playerMoving = null;
-});
+// canvas.addEventListener("mousemove", event => {
+//   if (playerMoving) {
+//     const rect = canvas.getBoundingClientRect();
+
+//     const mouseX = (event.clientX - rect.left) / (rect.right - rect.left) * canvas.width;
+//     const mouseY = (event.clientY - rect.top) / (rect.bottom - rect.top) * canvas.height;
+
+//     playerMoving.move(mouseX, mouseY);
+//   }
+// });
+
+// canvas.addEventListener("mouseup", () => {
+//   playerMoving = null;
+// });
 
 const background = () => {
   ctx.fillStyle = 'saddlebrown';
@@ -175,6 +222,10 @@ const draw = () => {
   background();
 
   balls.forEach(ball => {
+    if (!playerMoving) {
+      ball.updatePosition();
+    }
+
     ctx.fillStyle = 'white';
     ctx.beginPath();
     ctx.ellipse(ball.x, ball.y, ball.width, ball.width, 0, 0, 360);
