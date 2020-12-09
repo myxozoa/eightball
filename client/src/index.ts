@@ -25,7 +25,7 @@ ctx.scale(scale, scale);
 // 2D array of pocket locations. wont really need changing
 const pockets = Array.from(pocketLocations(canvasSize()), (p) => new Pocket({ x: p[0], y: p[1] }, { width: pocketSize }));
 
-const balls = Array.from(ballStartLocations, (ball) => new Ball({ x: ball[0], y: ball[1] }, { width: 50 }, true));
+const balls = Array.from(ballStartLocations, (ball) => new Ball({ x: ball[0], y: ball[1] }, { width: 25 }, true));
 
 const rails = [
   // Top Rails
@@ -105,6 +105,10 @@ const draw = () => {
   balls.forEach((ball) => {
     if (!playerMoving) {
       ball.updatePosition();
+
+      if (pockets.some((pocket) => pocket.didSink(ball))) {
+        // alert("wooo");
+      }
     }
 
     ball.draw(ctx);
