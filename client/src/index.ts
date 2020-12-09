@@ -2,7 +2,7 @@
 import { Pocket, Rail, drawBackground } from "./Objects/Table";
 import { Ball } from "./Objects/Ball";
 
-import { ballStartLocations, pocketLocations, pocketSize } from "./parameters";
+import { ballSize, ballStartLocations, pocketLocations, pocketSize } from "./parameters";
 
 import "./global.scss";
 import "./style.scss";
@@ -25,7 +25,7 @@ ctx.scale(scale, scale);
 // 2D array of pocket locations. wont really need changing
 const pockets = Array.from(pocketLocations(canvasSize()), (p) => new Pocket({ x: p[0], y: p[1] }, { width: pocketSize }));
 
-const balls = Array.from(ballStartLocations, (ball) => new Ball({ x: ball[0], y: ball[1] }, { width: 25 }, true));
+const balls = Array.from(ballStartLocations, (ball) => new Ball({ x: ball[0], y: ball[1] }, { width: ballSize }, true));
 
 const rails = [
   // Top Rails
@@ -55,8 +55,6 @@ canvas.addEventListener("mousedown", (event) => {
 
       const dirMagnitude = Math.sqrt(Math.pow(direction[0], 2) + Math.pow(direction[1], 2));
       const dirNormalized = [direction[0] / dirMagnitude, direction[1] / dirMagnitude];
-
-      console.log(direction, dirMagnitude, dirNormalized);
 
       balls[i].updateAcceleration(dirNormalized[0] * 3, dirNormalized[1] * 3);
     }
@@ -106,8 +104,16 @@ const draw = () => {
     if (!playerMoving) {
       ball.updatePosition();
 
-      if (pockets.some((pocket) => pocket.didSink(ball))) {
-        // alert("wooo");
+      if (ball.position.x < 0 || ball.position.y < 0 || ball.position.x > canvas.width || ball.position.y > canvas.height) ball.reset();
+
+      if (Math.abs(ball.velocity.x) > 1 || Math.abs(ball.velocity.y) > 1) {
+        if (rails.some((rail) => rail.collide(ball))) {
+          // alert("damn");
+        }
+
+        if (pockets.some((pocket) => pocket.didSink(ball))) {
+          // alert("wooo");
+        }
       }
     }
 

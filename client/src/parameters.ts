@@ -1,5 +1,6 @@
 import { Size } from "./types";
 
+export const ballSize = 25;
 export const tableFriction = 0.95;
 export const pocketSize = 52;
 export const pocketSizeOffset = pocketSize * 1.05;

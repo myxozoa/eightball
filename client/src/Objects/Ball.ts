@@ -27,8 +27,6 @@ export class Ball extends Interactable {
 
     this.velocity.x = (this.velocity.x + this.acceleration.x) * tableFriction;
     this.velocity.y = (this.velocity.y + this.acceleration.y) * tableFriction;
-
-    // console.log('velo', this.velocity)
   };
 
   decellerate = () => {
@@ -39,8 +37,6 @@ export class Ball extends Interactable {
   updateAcceleration = (x: number, y: number) => {
     this.acceleration.x = x;
     this.acceleration.y = y;
-
-    // console.log('accel', this.acceleration);
   };
 
   move = (x: number, y: number) => {
@@ -58,5 +54,11 @@ export class Ball extends Interactable {
     ctx.beginPath();
     ctx.ellipse(this.position.x, this.position.y, this.size.width, this.size.width, 0, 0, 360);
     ctx.fill();
+  };
+
+  reset = () => {
+    this.acceleration = { x: 0, y: 0 };
+    this.velocity = { x: 0, y: 0 };
+    this.position = { x: 500, y: 500 };
   };
 }

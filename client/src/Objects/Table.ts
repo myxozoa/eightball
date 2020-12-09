@@ -2,7 +2,72 @@ import { Interactable } from "./Interactable";
 import { Ball } from "./Ball";
 
 import { Coordinate, Size, Degrees } from "../types";
-import { pocketSizeOffset, railThickness } from "../parameters";
+import { ballSize, pocketSizeOffset, railThickness } from "../parameters";
+
+const dist = (x1: number, x2: number, y1: number, y2: number): number => {
+  const a = x1 - x2;
+  const b = y2 - y1;
+
+  return Math.sqrt(a * a + b * b);
+};
+
+// LINE/POINT
+const linePoint = (x1: number, y1: number, x2: number, y2: number, px: number, py: number): boolean => {
+  // get distance from the point to the two ends of the line
+  const d1 = dist(px, py, x1, y1);
+  const d2 = dist(px, py, x2, y2);
+
+  // get the length of the line
+  const lineLen = dist(x1, y1, x2, y2);
+
+  // since floats are so minutely accurate, add
+  // a little buffer zone that will give collision
+  const buffer = 0.1; // higher # = less accurate
+
+  // if the two distances are equal to the line's
+  // length, the point is on the line!
+  // note we use the buffer here to give a range, rather
+  // than one #
+  if (d1 + d2 >= lineLen - buffer && d1 + d2 <= lineLen + buffer) {
+    return true;
+  }
+  return false;
+};
+
+// LINE/CIRCLE
+const lineCircle = (x1: number, y1: number, x2: number, y2: number, cx: number, cy: number, r: number): boolean => {
+  // is either end INSIDE the circle?
+  // if so, return true immediately
+  // const inside1 = pointCircle(x1,y1, cx,cy,r);
+  // const inside2 = pointCircle(x2,y2, cx,cy,r);
+  // if (inside1 || inside2) return true;
+
+  // get length of the line
+  const len = dist(x1, x2, y1, y2);
+
+  // get dot product of the line and circle
+  const dot = ((cx - x1) * (x2 - x1) + (cy - y1) * (y2 - y1)) / Math.pow(len, 2);
+
+  // find the closest point on the line
+  const closestX = x1 + dot * (x2 - x1);
+  const closestY = y1 + dot * (y2 - y1);
+
+  // is this point actually on the line segment?
+  // if so keep going, but if not, return false
+  const onSegment = linePoint(x1, y1, x2, y2, closestX, closestY);
+  if (!onSegment) return false;
+
+  // get distance to closest point
+  const distance = dist(closestX, closestY, cx, cy);
+
+  console.log(len, distance);
+
+  // is the circle on the line?
+  if (distance <= r) {
+    return true;
+  }
+  return false;
+};
 
 export class Pocket extends Interactable {
   constructor(position: Coordinate, size: Size) {
@@ -28,6 +93,7 @@ export class Rail {
   rotation: Degrees;
   orientation: "top" | "side" | "bottom";
   order: "first" | "second";
+  points: number[][];
 
   constructor(canvasSize: Size, rotation: Degrees, orientation: "top" | "side" | "bottom", order: "first" | "second") {
     this.length = canvasSize.height! - pocketSizeOffset * (orientation === "side" ? 4 : 3);
@@ -58,71 +124,91 @@ export class Rail {
         }
         break;
     }
+
+    this.points = this.determinePoints();
   }
 
-  draw = (ctx: CanvasRenderingContext2D) => {
+  private determinePoints = (): number[][] => {
     // Orientations
     // |_|[----------1-----------]|_|
     // |3|                        |4|
     // |_|[----------2-----------]|_|
-    const determinePoints = (): number[][] => {
-      const railOnePoints = [
+
+    let points: number[][] = [];
+
+    if (this.orientation === "top") {
+      points = [
+        [0, 0],
         [railThickness, railThickness],
         [this.length - railThickness, railThickness],
         [this.length, 0],
       ];
+    }
 
-      const railTwoPoints = [
-        [railThickness, -railThickness],
-        [this.length - railThickness, -railThickness],
-        [this.length, 0],
-      ];
-
-      const railThreePoints = [
+    if (this.orientation === "side" && this.order === "first") {
+      points = [
+        [0, 0],
         [railThickness, railThickness],
         [railThickness, this.length - railThickness],
         [0, this.length],
       ];
+    }
 
-      const railFourPoints = [
+    if (this.orientation === "side" && this.order === "second") {
+      points = [
+        [0, 0],
         [-railThickness, railThickness],
         [-railThickness, this.length - railThickness],
         [0, this.length],
       ];
+    }
 
-      if (this.orientation === "top") {
-        return railOnePoints;
-      }
+    if (this.orientation === "bottom") {
+      points = [
+        [0, 0],
+        [railThickness, -railThickness],
+        [this.length - railThickness, -railThickness],
+        [this.length, 0],
+      ];
+    }
 
-      if (this.orientation === "side" && this.order === "first") {
-        return railThreePoints;
-      }
+    return points.map((point) => {
+      const temp = [...point];
 
-      if (this.orientation === "side" && this.order === "second") {
-        return railFourPoints;
-      }
+      temp[0] += this.position.x;
+      temp[1] += this.position.y;
 
-      if (this.orientation === "bottom") {
-        return railTwoPoints;
-      }
+      return temp;
+    });
+  };
 
-      return railOnePoints;
-    };
+  // Ball -> wall collisions
+  collide = (ball: Ball) => {
+    let next = 0;
+    for (let current = 0; current < this.points.length; current++) {
+      next = current + 1;
+      if (next == this.points.length) next = 0;
 
+      const vc = this.points[current];
+      const vn = this.points[next];
+
+      const collision = lineCircle(vc[0], vc[1], vn[0], vn[1], ball.position.x, ball.position.y, ballSize);
+
+      if (collision) return true;
+    }
+
+    return false;
+  };
+
+  draw = (ctx: CanvasRenderingContext2D) => {
     ctx.fillStyle = "saddlebrown";
-
-    // ctx.translate(this.position.x, this.position.y);
-    // ctx.rotate(this.rotation * (Math.PI / 180));
-    // ctx.translate(-this.position.x, -this.position.y);
 
     ctx.beginPath();
     ctx.moveTo(this.position.x, this.position.y);
 
-    const points = determinePoints();
-
-    points.forEach((point) => {
-      ctx.lineTo(point[0] + this.position.x, point[1] + this.position.y);
-    });
+    for (let i = 1; i < this.points.length; i++) {
+      ctx.lineTo(this.points[i][0], this.points[i][1]);
+    }
 
     ctx.fill();
 
