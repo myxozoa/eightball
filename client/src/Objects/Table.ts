@@ -4,69 +4,24 @@ import { Ball } from "./Ball";
 import { Coordinate, Size, Degrees } from "../types";
 import { ballSize, pocketSizeOffset, railThickness } from "../parameters";
 
-const dist = (x1: number, x2: number, y1: number, y2: number): number => {
-  const a = x1 - x2;
-  const b = y2 - y1;
+const arrayToCoord = (array: number[]): Coordinate => ({ x: array[0], y: array[1] });
 
-  return Math.sqrt(a * a + b * b);
-};
+const distanceBetweenPoints = (a: Coordinate, b: Coordinate): number => Math.hypot(b.x - a.x, b.y - a.y);
 
-// LINE/POINT
-const linePoint = (x1: number, y1: number, x2: number, y2: number, px: number, py: number): boolean => {
-  // get distance from the point to the two ends of the line
-  const d1 = dist(px, py, x1, y1);
-  const d2 = dist(px, py, x2, y2);
+const dotProduct = (a: Coordinate, b: Coordinate): number => a.x * b.x + (a.y + b.y);
 
-  // get the length of the line
-  const lineLen = dist(x1, y1, x2, y2);
+const closestPointOnLineSegment = (a: Coordinate, b: Coordinate, p: Coordinate): Coordinate => {
+  // line segment being tested is AB
+  const vectorA2P: Coordinate = { x: p.x - a.x, y: p.y - a.y };
+  const vectorA2B: Coordinate = { x: b.x - a.x, y: b.y - a.y };
 
-  // since floats are so minutely accurate, add
-  // a little buffer zone that will give collision
-  const buffer = 0.1; // higher # = less accurate
+  const magnitude = Math.pow(distanceBetweenPoints(a, b), 2);
+  const ABAP_dotProduct = dotProduct(vectorA2P, vectorA2B);
+  const distance = ABAP_dotProduct / magnitude;
 
-  // if the two distances are equal to the line's
-  // length, the point is on the line!
-  // note we use the buffer here to give a range, rather
-  // than one #
-  if (d1 + d2 >= lineLen - buffer && d1 + d2 <= lineLen + buffer) {
-    return true;
-  }
-  return false;
-};
-
-// LINE/CIRCLE
-const lineCircle = (x1: number, y1: number, x2: number, y2: number, cx: number, cy: number, r: number): boolean => {
-  // is either end INSIDE the circle?
-  // if so, return true immediately
-  // const inside1 = pointCircle(x1,y1, cx,cy,r);
-  // const inside2 = pointCircle(x2,y2, cx,cy,r);
-  // if (inside1 || inside2) return true;
-
-  // get length of the line
-  const len = dist(x1, x2, y1, y2);
-
-  // get dot product of the line and circle
-  const dot = ((cx - x1) * (x2 - x1) + (cy - y1) * (y2 - y1)) / Math.pow(len, 2);
-
-  // find the closest point on the line
-  const closestX = x1 + dot * (x2 - x1);
-  const closestY = y1 + dot * (y2 - y1);
-
-  // is this point actually on the line segment?
-  // if so keep going, but if not, return false
-  const onSegment = linePoint(x1, y1, x2, y2, closestX, closestY);
-  if (!onSegment) return false;
-
-  // get distance to closest point
-  const distance = dist(closestX, closestY, cx, cy);
-
-  console.log(len, distance);
-
-  // is the circle on the line?
-  if (distance <= r) {
-    return true;
-  }
-  return false;
+  if (distance < 0) return a;
+  else if (distance > 1) return b;
+  else return { x: a.x + vectorA2B.x * distance, y: a.y + vectorA2B.y * distance };
 };
 
 export class Pocket extends Interactable {
@@ -104,23 +59,23 @@ export class Rail {
     switch (orientation) {
       case "top":
         if (order === "first") {
-          this.position = { x: pocketSizeOffset * 2, y: pocketSizeOffset };
+          this.position = { x: pocketSizeOffset * 2, y: 0 };
         } else {
-          this.position = { x: canvasSize.width / 2 + pocketSizeOffset, y: pocketSizeOffset };
+          this.position = { x: canvasSize.width / 2 + pocketSizeOffset, y: 0 };
         }
         break;
       case "side":
         if (order === "first") {
-          this.position = { x: pocketSizeOffset, y: pocketSizeOffset * 2 };
+          this.position = { x: 0, y: pocketSizeOffset * 2 };
         } else {
-          this.position = { x: canvasSize.width - pocketSizeOffset, y: pocketSizeOffset * 2 };
+          this.position = { x: canvasSize.width, y: pocketSizeOffset * 2 };
         }
         break;
       case "bottom":
         if (order === "first") {
-          this.position = { x: pocketSizeOffset * 2, y: canvasSize.height! - pocketSizeOffset };
+          this.position = { x: pocketSizeOffset * 2, y: canvasSize.height! };
         } else {
-          this.position = { x: canvasSize.width / 2 + pocketSizeOffset, y: canvasSize.height! - pocketSizeOffset };
+          this.position = { x: canvasSize.width / 2 + pocketSizeOffset, y: canvasSize.height! };
         }
         break;
     }
@@ -139,8 +94,10 @@ export class Rail {
     if (this.orientation === "top") {
       points = [
         [0, 0],
-        [railThickness, railThickness],
-        [this.length - railThickness, railThickness],
+        [0, pocketSizeOffset],
+        [railThickness, railThickness + pocketSizeOffset],
+        [this.length - railThickness, railThickness + pocketSizeOffset],
+        [this.length, pocketSizeOffset],
         [this.length, 0],
       ];
     }
@@ -148,8 +105,10 @@ export class Rail {
     if (this.orientation === "side" && this.order === "first") {
       points = [
         [0, 0],
-        [railThickness, railThickness],
-        [railThickness, this.length - railThickness],
+        [pocketSizeOffset, 0],
+        [railThickness + pocketSizeOffset, railThickness],
+        [railThickness + pocketSizeOffset, this.length - railThickness],
+        [pocketSizeOffset, this.length],
         [0, this.length],
       ];
     }
@@ -157,8 +116,10 @@ export class Rail {
     if (this.orientation === "side" && this.order === "second") {
       points = [
         [0, 0],
-        [-railThickness, railThickness],
-        [-railThickness, this.length - railThickness],
+        [-pocketSizeOffset, 0],
+        [-railThickness - pocketSizeOffset, railThickness],
+        [-railThickness - pocketSizeOffset, this.length - railThickness],
+        [-pocketSizeOffset, this.length],
         [0, this.length],
       ];
     }
@@ -166,8 +127,10 @@ export class Rail {
     if (this.orientation === "bottom") {
       points = [
         [0, 0],
-        [railThickness, -railThickness],
-        [this.length - railThickness, -railThickness],
+        [0, -pocketSizeOffset],
+        [railThickness, -railThickness - pocketSizeOffset],
+        [this.length - railThickness, -railThickness - pocketSizeOffset],
+        [this.length, -pocketSizeOffset],
         [this.length, 0],
       ];
     }
@@ -183,18 +146,32 @@ export class Rail {
   };
 
   // Ball -> wall collisions
-  collide = (ball: Ball) => {
+  collide = (ball: Ball, ctx: CanvasRenderingContext2D) => {
     let next = 0;
+
     for (let current = 0; current < this.points.length; current++) {
       next = current + 1;
       if (next == this.points.length) next = 0;
 
-      const vc = this.points[current];
-      const vn = this.points[next];
+      const currentPoints = this.points[current];
+      const nextPoints = this.points[next];
 
-      const collision = lineCircle(vc[0], vc[1], vn[0], vn[1], ball.position.x, ball.position.y, ballSize);
+      const p = closestPointOnLineSegment(arrayToCoord(currentPoints), arrayToCoord(nextPoints), ball.position);
 
-      if (collision) return true;
+      const distance = distanceBetweenPoints(p, ball.position);
+
+      if (distance < ballSize && distance > 0) {
+        // const ballTrajectory = [ball.position, {x: ball.position.x - (ball.velocity.x * 10 ), y: ball.position.y - (ball.velocity.y * 10)}];
+        const distanceToMove = ballSize - distance;
+        const magnitude = Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y);
+
+        const normalizedBallTrajectory = [(ball.velocity.x / magnitude) * distanceToMove, (ball.velocity.y / magnitude) * distanceToMove];
+        const newBallPosition: Coordinate = { x: ball.position.x - normalizedBallTrajectory[0], y: ball.position.y - normalizedBallTrajectory[1] };
+
+        console.log(ball.velocity);
+        ball.setPosition(newBallPosition);
+        return true;
+      }
     }
 
     return false;
@@ -218,9 +195,10 @@ export class Rail {
 }
 
 export const drawBackground = (canvasSize: Size, ctx: CanvasRenderingContext2D) => {
-  ctx.fillStyle = "saddlebrown";
+  // ctx.fillStyle = "saddlebrown";
+  ctx.fillStyle = "green";
   ctx.fillRect(0, 0, canvasSize.width, canvasSize.height!);
 
-  ctx.fillStyle = "green";
-  ctx.fillRect(pocketSizeOffset, pocketSizeOffset, canvasSize.width - pocketSizeOffset * 2, canvasSize.height! - pocketSizeOffset * 2);
+  // ctx.fillStyle = "green";
+  // ctx.fillRect(pocketSizeOffset, pocketSizeOffset, canvasSize.width - pocketSizeOffset * 2, canvasSize.height! - pocketSizeOffset * 2);
 };

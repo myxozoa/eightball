@@ -1,5 +1,5 @@
 import { Interactable } from "./Interactable";
-import { tableFriction } from "../parameters";
+import { pocketSizeOffset, tableFriction } from "../parameters";
 
 import { Coordinate, Size } from "../types";
 
@@ -14,6 +14,20 @@ export class Ball extends Interactable {
     this.acceleration = { x: 0, y: 0 };
     this.velocity = { x: 0, y: 0 };
   }
+
+  stop = () => {
+    this.acceleration = { x: 0, y: 0 };
+    this.velocity = { x: 0, y: 0 };
+  };
+
+  setPosition = (position: Coordinate, keepMoving?: boolean) => {
+    if (!keepMoving) {
+      this.acceleration = { x: 0, y: 0 };
+      this.velocity = { x: 0, y: 0 };
+    }
+
+    this.position = position;
+  };
 
   updatePosition = () => {
     this.updateVelocity();

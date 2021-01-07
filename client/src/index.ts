@@ -41,6 +41,8 @@ const rails = [
   new Rail({ width: canvas.width, height: canvas.height }, 180, "bottom", "second"),
 ];
 
+console.log(rails);
+
 let playerMoving: Ball | null = null;
 
 canvas.addEventListener("mousedown", (event) => {
@@ -101,21 +103,22 @@ const draw = () => {
   rails.forEach((rail) => rail.draw(ctx));
 
   balls.forEach((ball) => {
-    if (!playerMoving) {
-      ball.updatePosition();
+    // if (!playerMoving) {
+    ball.updatePosition();
 
-      if (ball.position.x < 0 || ball.position.y < 0 || ball.position.x > canvas.width || ball.position.y > canvas.height) ball.reset();
+    if (ball.position.x < 0 || ball.position.y < 0 || ball.position.x > canvas.width || ball.position.y > canvas.height) ball.reset();
 
-      if (Math.abs(ball.velocity.x) > 1 || Math.abs(ball.velocity.y) > 1) {
-        if (rails.some((rail) => rail.collide(ball))) {
-          // alert("damn");
-        }
-
-        if (pockets.some((pocket) => pocket.didSink(ball))) {
-          // alert("wooo");
-        }
+    if (Math.abs(ball.velocity.x) > 1 || Math.abs(ball.velocity.y) > 1) {
+      if (rails.some((rail) => rail.collide(ball, ctx))) {
+        // alert("damn");
+        console.log("=------------------------got here-----------------------------------------");
       }
+
+      // if (pockets.some((pocket) => pocket.didSink(ball))) {
+      //   // alert("wooo");
+      // }
     }
+    // }
 
     ball.draw(ctx);
   });
