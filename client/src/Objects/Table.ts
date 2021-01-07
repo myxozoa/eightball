@@ -24,6 +24,12 @@ const closestPointOnLineSegment = (a: Coordinate, b: Coordinate, p: Coordinate):
   else return { x: a.x + vectorA2B.x * distance, y: a.y + vectorA2B.y * distance };
 };
 
+const normalizeVector = (vector: Coordinate): Coordinate => {
+  const magnitude = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
+
+  return { x: vector.x / magnitude, y: vector.y / magnitude };
+};
+
 export class Pocket extends Interactable {
   constructor(position: Coordinate, size: Size) {
     super(position, size);
@@ -160,15 +166,12 @@ export class Rail {
 
       const distance = distanceBetweenPoints(p, ball.position);
 
+      // Note: This function controlling the ball position isnt great
       if (distance < ballSize && distance > 0) {
-        // const ballTrajectory = [ball.position, {x: ball.position.x - (ball.velocity.x * 10 ), y: ball.position.y - (ball.velocity.y * 10)}];
         const distanceToMove = ballSize - distance;
-        const magnitude = Math.sqrt(ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y);
+        const normalizedBallTrajectory = normalizeVector(ball.velocity);
+        const newBallPosition: Coordinate = { x: ball.position.x - normalizedBallTrajectory.x * distanceToMove, y: ball.position.y - normalizedBallTrajectory.y * distanceToMove };
 
-        const normalizedBallTrajectory = [(ball.velocity.x / magnitude) * distanceToMove, (ball.velocity.y / magnitude) * distanceToMove];
-        const newBallPosition: Coordinate = { x: ball.position.x - normalizedBallTrajectory[0], y: ball.position.y - normalizedBallTrajectory[1] };
-
-        console.log(ball.velocity);
         ball.setPosition(newBallPosition);
         return true;
       }
